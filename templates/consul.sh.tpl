@@ -33,6 +33,7 @@ sudo tee /etc/systemd/system/consul.d/config.json > /dev/null <<EOF
 }
 EOF
 
+
 wget https://github.com/hashicorp/consul/blob/master/terraform/shared/scripts/rhel_consul.service?raw=true -O consul.service
 
 echo "Installing Systemd service..."
@@ -42,4 +43,53 @@ sudo mv /tmp/consul.service /etc/systemd/system/consul.service
 sudo chmod 0644 /etc/systemd/system/consul.service
 
 sudo systemctl enable consul.service
-sudo systemctl start consul
+sudo systemctl start consul.service
+
+echo "Installing Nomad..."
+
+curl -sLo nomad.zip https://releases.hashicorp.com/nomad/${nomad_version}/nomad_${nomad_version}_linux_amd64.zip
+wget https://github.com/hashicorp/nomad/blob/master/dist/systemd/nomad.service?raw=true -O nomad.service
+
+
+echo "Installing Nomad..."
+unzip nomad.zip >/dev/null
+sudo chmod +x nomad
+sudo mv nomad /usr/bin/nomad
+
+pwd
+sudo mkdir -p /etc/nomad
+sudo mkdir -p /etc/systemd/system
+sudo chown root:root /tmp/nomad.service
+sudo mv /tmp/nomad.service /etc/systemd/system/nomad.service
+
+sudo tee /etc/nomad/config.hcl > /dev/null <<EOF
+bind_addr = "0.0.0.0"
+data_dir = "/opt/nomad/data"
+log_level = "DEBUG"
+
+region = "eu"
+
+datacenter = "dc1"
+
+advertise {
+  http = "$PRIVATE_IP:4646"
+  rpc = "$PRIVATE_IP:4647"
+  serf = "$PRIVATE_IP:4648"
+}
+
+server {
+  rejoin_after_leave = true
+  enabled = true
+  bootstrap_expect = 3
+}
+
+consul {
+  server_service_name = "nomad-server"
+  server_auto_join = true
+  auto_advertise = true
+  address = "127.0.0.1:8500"
+}
+EOF
+
+sudo systemctl enable nomad.service
+sudo systemctl start nomad.service

@@ -27,6 +27,7 @@ data "template_file" "server" {
 
   vars {
     consul_version = "0.8.2"
+    nomad_version = "0.5.6"
 
     config = <<EOF
      "bootstrap_expect": 3,
