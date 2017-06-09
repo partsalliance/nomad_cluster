@@ -63,7 +63,7 @@ sudo chown root:root /tmp/nomad.service
 sudo mv /tmp/nomad.service /etc/systemd/system/nomad.service
 
 sudo tee /etc/nomad/config.hcl > /dev/null <<EOF
-bind_addr = "0.0.0.0"
+bind_addr = "$PRIVATE_IP"
 data_dir = "/opt/nomad/data"
 log_level = "DEBUG"
 
@@ -77,18 +77,8 @@ advertise {
   serf = "$PRIVATE_IP:4648"
 }
 
-server {
-  rejoin_after_leave = true
-  enabled = true
-  bootstrap_expect = 3
-}
+${nomad_config}
 
-consul {
-  server_service_name = "nomad-server"
-  server_auto_join = true
-  auto_advertise = true
-  address = "127.0.0.1:8500"
-}
 EOF
 
 sudo systemctl enable nomad.service

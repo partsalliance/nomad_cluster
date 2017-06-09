@@ -2,12 +2,12 @@ resource "aws_instance" "nomad_master_server" {
 	count = "${var.servers}"
 	ami = "${var.ubuntu_ami}"
 	key_name = "${var.key_pair}"
-    iam_instance_profile   = "${aws_iam_instance_profile.consul-join.name}"
+  iam_instance_profile   = "${aws_iam_instance_profile.consul-join.name}"
 	subnet_id = "${module.vpc.public_subnet_cidr}"
 	instance_type = "${var.instance_master}"
 	vpc_security_group_ids = ["${aws_security_group.nomad_master_server_sg.id}"]
 
-    user_data = "${element(data.template_file.server.*.rendered, count.index)}"
+  user_data = "${element(data.template_file.server.*.rendered, count.index)}"
 
 	tags = "${map(
     "Name", "Nomad_Master_Server-${count.index}",
@@ -38,31 +38,20 @@ data "template_file" "server" {
      },
      "server": true
     EOF
+
+    nomad_config = <<EOF
+    server {
+      rejoin_after_leave = true
+      enabled = true
+      bootstrap_expect = 3
+    }
+
+    consul {
+      server_service_name = "nomad-server"
+      server_auto_join = true
+      auto_advertise = true
+      address = "127.0.0.1:8500"
+    }
+    EOF
   }
-}
-
-# Create an IAM role for the auto-join
-resource "aws_iam_role" "consul-join" {
-  name               = "${var.namespace}-consul-join"
-  assume_role_policy = "${file("${path.module}/templates/policies/assume-role.json")}"
-}
-
-# Create the policy
-resource "aws_iam_policy" "consul-join" {
-  name        = "${var.namespace}-consul-join"
-  description = "Allows Consul nodes to describe instances for joining."
-  policy      = "${file("${path.module}/templates/policies/describe-instances.json")}"
-}
-
-# Attach the policy
-resource "aws_iam_policy_attachment" "consul-join" {
-  name       = "${var.namespace}-consul-join"
-  roles      = ["${aws_iam_role.consul-join.name}"]
-  policy_arn = "${aws_iam_policy.consul-join.arn}"
-}
-
-# Create the instance profile
-resource "aws_iam_instance_profile" "consul-join" {
-  name  = "${var.namespace}-consul-join"
-  role = "${aws_iam_role.consul-join.name}"
 }
