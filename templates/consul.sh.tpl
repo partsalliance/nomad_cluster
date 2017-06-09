@@ -83,3 +83,8 @@ EOF
 
 sudo systemctl enable nomad.service
 sudo systemctl start nomad.service
+
+sudo apt-get install -y docker.io
+sudo usermod -aG docker $(whoami)
+sudo systemctl enable docker.service
+sudo systemctl start docker.service
