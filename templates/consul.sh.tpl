@@ -63,7 +63,7 @@ sudo chown root:root /tmp/nomad.service
 sudo mv /tmp/nomad.service /etc/systemd/system/nomad.service
 
 sudo tee /etc/nomad/config.hcl > /dev/null <<EOF
-bind_addr = "$PRIVATE_IP"
+bind_addr = "0.0.0.0"
 data_dir = "/opt/nomad/data"
 log_level = "DEBUG"
 
@@ -88,3 +88,26 @@ sudo apt-get install -y docker.io
 sudo usermod -aG docker $(whoami)
 sudo systemctl enable docker.service
 sudo systemctl start docker.service
+
+sudo mkdir ~/Prometheus/node_exporter
+cd ~/Prometheus/node_exporter
+wget https://github.com/prometheus/node_exporter/releases/download/v0.14.0/node_exporter-0.14.0.linux-amd64.tar.gz
+tar -xvzf node_exporter-0.14.0.linux-amd64.tar.gz
+
+cd node_exporter-0.14.0.linux-amd64
+mv * .. 
+
+
+sudo tee /etc/systemd/system/node_exporter.service >/dev/null <<EOF
+[Unit]
+Description=Node Exporter
+
+[Service]
+User=prometheus
+ExecStart=/home/prometheus/Prometheus/node_exporter/node_exporter
+
+[Install]
+WantedBy=default.target
+EOF
+
+
