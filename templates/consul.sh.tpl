@@ -110,4 +110,8 @@ ExecStart=/home/prometheus/Prometheus/node_exporter/node_exporter
 WantedBy=default.target
 EOF
 
+sudo systemctl daemon-reload
+sudo systemctl enable node_exporter.service
+sudo systemctl start node_exporter.service
+
 
