@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+
+
 echo "Grabbing IPs..."
 PRIVATE_IP=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
 PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
@@ -89,13 +92,13 @@ sudo usermod -aG docker $(whoami)
 sudo systemctl enable docker.service
 sudo systemctl start docker.service
 
-sudo mkdir ~/Prometheus/node_exporter
-cd ~/Prometheus/node_exporter
-wget https://github.com/prometheus/node_exporter/releases/download/v0.14.0/node_exporter-0.14.0.linux-amd64.tar.gz
-tar -xvzf node_exporter-0.14.0.linux-amd64.tar.gz
+sudo mkdir -p /home/ubuntu/Prometheus/node_exporter
+cd /home/ubuntu/Prometheus/node_exporter
+sudo wget https://github.com/prometheus/node_exporter/releases/download/v0.14.0/node_exporter-0.14.0.linux-amd64.tar.gz
+sudo tar -xvzf node_exporter-0.14.0.linux-amd64.tar.gz
 
 cd node_exporter-0.14.0.linux-amd64
-mv * .. 
+sudo mv * .. 
 
 
 sudo tee /etc/systemd/system/node_exporter.service >/dev/null <<EOF
@@ -103,8 +106,8 @@ sudo tee /etc/systemd/system/node_exporter.service >/dev/null <<EOF
 Description=Node Exporter
 
 [Service]
-User=prometheus
-ExecStart=/home/prometheus/Prometheus/node_exporter/node_exporter
+User=ubuntu
+ExecStart=/home/ubuntu/Prometheus/node_exporter/node_exporter
 
 [Install]
 WantedBy=default.target
