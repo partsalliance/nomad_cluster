@@ -10,7 +10,7 @@ resource "aws_instance" "nomad_client" {
   user_data = "${element(data.template_file.client.*.rendered, count.index)}"
 
 	tags = "${map(
-    "Name", "Nomad_Master_Server-${count.index}",
+    "Name", "Nomad_Client-${count.index}",
     var.consul_join_tag_key, var.consul_join_tag_value
     )}"
 
