@@ -20,13 +20,19 @@ resource "aws_instance" "nomad_master_server" {
 
     user_data = <<EOF
 #!/bin/bash
+exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 IP=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
 PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
 sed -i -e "s/{PRIVATE_IP}/$${IP}/g" /etc/consul.d/server.json
 sed -i -e "s/{PUBLIC_IP}/$${PUBLIC_IP}/g" /etc/consul.d/server.json
 sed -i -e 's/{consul_join_tag_key}/${var.consul_join_tag_key}/g' /etc/consul.d/server.json
 sed -i -e 's/{consul_join_tag_value}/${var.consul_join_tag_value}/g' /etc/consul.d/server.json
+
+sed -i -e "s/{PRIVATE_IP}/$${IP}/g" /etc/nomad.d/server.hcl
+
+systemctl enable nomad-server
 systemctl enable consul-server
+systemctl start nomad-server
 systemctl start consul-server
 EOF
 }
