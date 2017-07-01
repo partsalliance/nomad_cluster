@@ -7,8 +7,6 @@ resource "aws_instance" "nomad_master_server" {
 	instance_type = "${var.instance_master}"
 	vpc_security_group_ids = ["${aws_security_group.nomad_master_server_sg.id}"]
 
-  user_data = "${element(data.template_file.server.*.rendered, count.index)}"
-
 	tags = "${map(
     "Name", "Nomad_Master_Server-${count.index}",
     var.consul_join_tag_key, var.consul_join_tag_value
@@ -19,39 +17,22 @@ resource "aws_instance" "nomad_master_server" {
       volume_type = "gp2"
       volume_size = "30"
     }
-}
 
-data "template_file" "server" {
-  count    = "${var.servers}"
-  template = "${file("${path.module}/templates/consul.sh.tpl")}"
+    user_data = <<EOF
+#!/bin/bash
+exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+IP=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
+PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
+sed -i -e "s/{PRIVATE_IP}/$${IP}/g" /etc/consul.d/server.json
+sed -i -e "s/{PUBLIC_IP}/$${PUBLIC_IP}/g" /etc/consul.d/server.json
+sed -i -e 's/{consul_join_tag_key}/${var.consul_join_tag_key}/g' /etc/consul.d/server.json
+sed -i -e 's/{consul_join_tag_value}/${var.consul_join_tag_value}/g' /etc/consul.d/server.json
 
-  vars {
-    consul_version = "0.8.2"
-    nomad_version = "0.5.6"
+sed -i -e "s/{PRIVATE_IP}/$${IP}/g" /etc/nomad.d/server.hcl
 
-    config = <<EOF
-     "bootstrap_expect": 3,
-     "node_name": "${var.namespace}-server-${count.index}",
-     "retry_join_ec2": {
-       "tag_key": "${var.consul_join_tag_key}",
-       "tag_value": "${var.consul_join_tag_value}"
-     },
-     "server": true
-    EOF
-
-    nomad_config = <<EOF
-    server {
-      rejoin_after_leave = true
-      enabled = true
-      bootstrap_expect = 3
-    }
-
-    consul {
-      server_service_name = "nomad-server"
-      server_auto_join = true
-      auto_advertise = true
-      address = "127.0.0.1:8500"
-    }
-    EOF
-  }
+systemctl enable nomad-server
+systemctl enable consul-server
+systemctl start nomad-server
+systemctl start consul-server
+EOF
 }

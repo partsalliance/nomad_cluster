@@ -7,8 +7,6 @@ resource "aws_instance" "nomad_client" {
 	instance_type = "${var.instance_client}"
 	vpc_security_group_ids = ["${aws_security_group.nomad_master_server_sg.id}"]
 
-  user_data = "${element(data.template_file.client.*.rendered, count.index)}"
-
 	tags = "${map(
     "Name", "Nomad_Client-${count.index}",
     var.consul_join_tag_key, var.consul_join_tag_value
@@ -19,41 +17,22 @@ resource "aws_instance" "nomad_client" {
       volume_type = "gp2"
       volume_size = "30"
     }
-}
 
-data "template_file" "client" {
-  count    = "${var.servers}"
-  template = "${file("${path.module}/templates/consul.sh.tpl")}"
+   user_data = <<EOF
+#!/bin/bash
+exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+IP=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
+PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
+sed -i -e "s/{PRIVATE_IP}/$${IP}/g" /etc/consul.d/client.json
+sed -i -e "s/{PUBLIC_IP}/$${PUBLIC_IP}/g" /etc/consul.d/client.json
+sed -i -e 's/{consul_join_tag_key}/${var.consul_join_tag_key}/g' /etc/consul.d/client.json
+sed -i -e 's/{consul_join_tag_value}/${var.consul_join_tag_value}/g' /etc/consul.d/client.json
 
-  vars {
-    consul_version = "0.8.2"
-    nomad_version = "0.5.6"
+sed -i -e "s/{PRIVATE_IP}/$${IP}/g" /etc/nomad.d/client.hcl
 
-    config = <<EOF
-     "node_name": "${var.namespace}-client-${count.index}",
-     "retry_join_ec2": {
-       "tag_key": "${var.consul_join_tag_key}",
-       "tag_value": "${var.consul_join_tag_value}"
-     },
-     "server": false
-    EOF
-
-    nomad_config = <<EOF
-    client {
-      enabled = true
-      options {
-        "driver.raw_exec.enable" = "1"
-      }
-    }
-
-    consul {
-      server_service_name = "nomad-server"
-      server_auto_join = true
-      client_service_name = "nomad-client-${count.index}"
-      client_auto_join = true
-      auto_advertise = true
-      address = "127.0.0.1:8500"
-    }
-    EOF
-  }
+sudo systemctl enable nomad-client
+sudo systemctl enable consul-client
+sudo systemctl start nomad-client
+sudo systemctl start consul-client
+EOF
 }
