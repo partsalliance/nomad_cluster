@@ -5,7 +5,7 @@ variable "aws_secret_key" {}
 variable "aws_region" {}
 
 variable "ubuntu_ami" {
-	default = "ami-45224425"
+	default = "ami-ddf7e6a4"
 	description = "ubuntu 16.04 ami will use data source later"
 }
 
