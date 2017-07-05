@@ -1,0 +1,97 @@
+{
+	"variables": {
+		"aws_access_key": "",
+		"aws_secret_key": ""
+	},
+
+	"builders": [
+		{
+			"access_key":  "{{user `aws_access_key`}}",
+			"secret_key":  "{{user `aws_secret_key`}}",
+			"type": "amazon-ebs",
+			"region": "us-west-2",
+			"source_ami": "ami-45224425",
+			"instance_type": "t2.micro",
+			"ssh_username": "ubuntu",
+			"vpc_id": "vpc-8ae41cec",
+			"subnet_id": "subnet-271ab37c",
+			"security_group_ids": "sg-fb4ab081",
+			"ami_name": "nomad_consul {{timestamp}}"
+		}
+	],
+
+	"provisioners": [
+		{
+			"type": "file",
+			"source": "config/consul/aws_server.json",
+			"destination": "/tmp/consul-server.json",
+			"only": ["amazon-ebs"]
+		},
+		{
+			"type": "file",
+			"source": "config/consul/aws_client.json",
+			"destination": "/tmp/consul-client.json",
+			"only": ["amazon-ebs"]
+		},
+		{
+			"type": "file",
+			"source": "config/consul/consul-server.service",
+			"destination": "/tmp/consul-server.service"
+		},
+		{
+			"type": "file",
+			"source": "config/consul/consul-client.service",
+			"destination": "/tmp/consul-client.service"
+		},
+				{
+			"type": "file",
+			"source": "config/nomad/server.hcl",
+			"destination": "/tmp/nomad-server.hcl"
+		},
+		{
+			"type": "file",
+			"source": "config/nomad/client.hcl",
+			"destination": "/tmp/nomad-client.hcl"
+		},
+		{
+			"type": "file",
+			"source": "config/nomad/nomad-server.service",
+			"destination": "/tmp/nomad-server.service"
+		},
+		{
+			"type": "file",
+			"source": "config/nomad/nomad-client.service",
+			"destination": "/tmp/nomad-client.service"
+		},
+		{
+		    "type": "shell",
+		    "inline": [
+		    	"sudo apt-mark hold grub-legacy-ec2",
+				"sudo apt-get update",
+				"sudo apt-get upgrade -y",
+				"sudo apt-get install -y unzip docker.io",
+				"curl https://releases.hashicorp.com/consul/0.8.3/consul_0.8.3_linux_amd64.zip -o /tmp/consul.zip -s",
+				"sudo unzip /tmp/consul.zip -d /usr/local/bin",
+				"sudo mkdir /etc/consul.d",
+				"sudo mkdir -p /opt/consul",
+				"sudo mv /tmp/consul-server.json /etc/consul.d/server.json",
+				"sudo mv /tmp/consul-client.json /etc/consul.d/client.json",
+				"sudo mv /tmp/consul-server.service /etc/systemd/system/consul-server.service",
+				"sudo mv /tmp/consul-client.service /etc/systemd/system/consul-client.service",
+
+				"curl https://releases.hashicorp.com/nomad/0.5.6/nomad_0.5.6_linux_amd64-lxc.zip?_ga=2.227785245.183984699.1496827942-395277625.1478584541 -o /tmp/nomad.zip -s",
+				"sudo unzip /tmp/nomad.zip -d /usr/local/bin",
+				"sudo mkdir /etc/nomad.d",
+				"sudo mkdir -p /opt/nomad",
+				"sudo mv /tmp/nomad-server.hcl /etc/nomad.d/server.hcl",
+				"sudo mv /tmp/nomad-client.hcl /etc/nomad.d/client.hcl",
+				"sudo mv /tmp/nomad-server.service /etc/systemd/system/nomad-server.service",
+				"sudo mv /tmp/nomad-client.service /etc/systemd/system/nomad-client.service",
+
+
+				"sudo systemctl enable docker"
+			]
+    	}
+
+	]
+}
